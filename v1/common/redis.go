@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"time"
 
-	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/piaobeizu/machinery/v1/config"
 	"github.com/gomodule/redigo/redis"
 )
 

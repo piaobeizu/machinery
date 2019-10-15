@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"cloud.google.com/go/pubsub"
-	machinery "github.com/RichardKnop/machinery/v1"
-	"github.com/RichardKnop/machinery/v1/config"
+	machinery "github.com/piaobeizu/machinery/v1"
+	"github.com/piaobeizu/machinery/v1/config"
 )
 
 func createGCPPubSubTopicAndSubscription(cli *pubsub.Client, topicName, subscriptionName string) {

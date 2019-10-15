@@ -9,12 +9,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/opentracing/opentracing-go"
 
-	backendsiface "github.com/RichardKnop/machinery/v1/backends/iface"
-	"github.com/RichardKnop/machinery/v1/backends/result"
-	brokersiface "github.com/RichardKnop/machinery/v1/brokers/iface"
-	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/machinery/v1/tasks"
-	"github.com/RichardKnop/machinery/v1/tracing"
+	backendsiface "github.com/piaobeizu/machinery/v1/backends/iface"
+	"github.com/piaobeizu/machinery/v1/backends/result"
+	brokersiface "github.com/piaobeizu/machinery/v1/brokers/iface"
+	"github.com/piaobeizu/machinery/v1/config"
+	"github.com/piaobeizu/machinery/v1/tasks"
+	"github.com/piaobeizu/machinery/v1/tracing"
 )
 
 // Server is the main Machinery object and stores all configuration
