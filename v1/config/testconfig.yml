@@ -1,15 +1,15 @@
 ---
-broker: broker
+broker: 'redis://123456@10.70.19.170:6379'
 default_queue: default_queue
-result_backend: result_backend
+result_backend: 'redis://123456@10.70.19.170:6379'
 results_expire_in: 123456
-amqp:
-  binding_key: binding_key
-  exchange: exchange
-  exchange_type: exchange_type
-  prefetch_count: 123
-  queue_declare_args:
-    x-max-priority: 10
-  queue_binding_args:
-    image-type: png
-    x-match: any
+#amqp:
+#  binding_key: binding_key
+#  exchange: exchange
+#  exchange_type: exchange_type
+#  prefetch_count: 123
+#  queue_declare_args:
+#    x-max-priority: 10
+#  queue_binding_args:
+#    image-type: png
+#    x-match: any

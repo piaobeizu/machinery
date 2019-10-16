@@ -4,18 +4,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/piaobeizu/cron"
+	"github.com/piaobeizu/machinery/v1/log"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/piaobeizu/machinery/v1/backends/result"
 	"github.com/piaobeizu/machinery/v1/brokers/eager"
 	"github.com/piaobeizu/machinery/v1/config"
 	"github.com/piaobeizu/machinery/v1/tasks"
 	"github.com/piaobeizu/machinery/v1/tracing"
-	"github.com/google/uuid"
 
+	opentracing "github.com/opentracing/opentracing-go"
 	backendsiface "github.com/piaobeizu/machinery/v1/backends/iface"
 	brokersiface "github.com/piaobeizu/machinery/v1/brokers/iface"
-	opentracing "github.com/opentracing/opentracing-go"
 )
 
 // Server is the main Machinery object and stores all configuration
@@ -180,8 +182,30 @@ func (server *Server) SendTaskWithContext(ctx context.Context, signature *tasks.
 		server.prePublishHandler(signature)
 	}
 
-	if err := server.broker.Publish(ctx, signature); err != nil {
-		return nil, fmt.Errorf("Publish message error: %s", err)
+	if signature.CronRule != "" {
+		var (
+			c   *cron.Cron
+			err error
+		)
+		if signature.StartTime > 0 && signature.EndTime > 0 {
+			c, err = cron.DelayNew(signature.StartTime, signature.EndTime, cron.WithSeconds())
+			if err != nil {
+				log.ERROR.Printf("create cron task error, cause is: %s", err)
+			}
+		} else {
+			c = cron.New(cron.WithSeconds())
+		}
+		c.AddFunc(signature.CronRule, func() {
+			log.INFO.Printf("start publish message")
+			if err := server.broker.Publish(ctx, signature); err != nil {
+				log.ERROR.Printf("Publish message error: %s", err)
+			}
+		})
+		c.Start()
+	} else {
+		if err := server.broker.Publish(ctx, signature); err != nil {
+			return nil, fmt.Errorf("Publish message error: %s", err)
+		}
 	}
 
 	return result.NewAsyncResult(signature, server.backend), nil

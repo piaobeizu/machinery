@@ -10,11 +10,11 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	opentracing_log "github.com/opentracing/opentracing-go/log"
 
+	"github.com/google/uuid"
 	"github.com/piaobeizu/machinery/v1"
 	"github.com/piaobeizu/machinery/v1/config"
 	"github.com/piaobeizu/machinery/v1/log"
 	"github.com/piaobeizu/machinery/v1/tasks"
-	"github.com/google/uuid"
 	"github.com/urfave/cli"
 
 	exampletasks "github.com/piaobeizu/machinery/example/tasks"
@@ -74,6 +74,7 @@ func main() {
 }
 
 func loadConfig() (*config.Config, error) {
+	configPath = "/Users/steven/develop/code/github/machinery/v1/config/testconfig.yml"
 	if configPath != "" {
 		return config.NewFromYaml(configPath, true)
 	}
@@ -164,7 +165,7 @@ func send() error {
 		multiplyTask0, multiplyTask1                      tasks.Signature
 		sumIntsTask, sumFloatsTask, concatTask, splitTask tasks.Signature
 		panicTask                                         tasks.Signature
-		longRunningTask                                   tasks.Signature
+		longRunningTask, cycleTask                        tasks.Signature
 	)
 
 	var initTasks = func() {
@@ -271,6 +272,11 @@ func send() error {
 		longRunningTask = tasks.Signature{
 			Name: "long_running_task",
 		}
+
+		cycleTask = tasks.Signature{
+			Name:     "long_running_task",
+			CronRule: "*/10 * * * * ?",
+		}
 	}
 
 	/*
@@ -304,9 +310,9 @@ func send() error {
 	}
 	log.INFO.Printf("1 + 1 = %v\n", tasks.HumanReadableResults(results))
 
-	/*
-	 * Try couple of tasks with a slice argument and slice return value
-	 */
+	///*
+	// * Try couple of tasks with a slice argument and slice return value
+	// */
 	asyncResult, err = server.SendTaskWithContext(ctx, &sumIntsTask)
 	if err != nil {
 		return fmt.Errorf("Could not send task: %s", err.Error())
@@ -354,8 +360,7 @@ func send() error {
 	/*
 	 * Now let's explore ways of sending multiple tasks
 	 */
-
-	// Now let's try a parallel execution
+	//Now let's try a parallel execution
 	initTasks()
 	log.INFO.Println("Group of tasks (parallel execution):")
 
@@ -382,7 +387,7 @@ func send() error {
 		)
 	}
 
-	// Now let's try a group with a chord
+	//Now let's try a group with a chord
 	initTasks()
 	log.INFO.Println("Group of tasks with a callback (chord):")
 
@@ -452,6 +457,27 @@ func send() error {
 		return fmt.Errorf("Getting long running task result failed with error: %s", err.Error())
 	}
 	log.INFO.Printf("Long running task returned = %v\n", tasks.HumanReadableResults(results))
+
+	// Now let's try chaining task results
+	initTasks()
+	log.INFO.Println("Chain of tasks:")
+
+	now := time.Now().Unix()
+	initTasks()
+	cycleTask.StartTime = now + 1
+	cycleTask.EndTime = now + 22
+	asyncResult, err = server.SendTaskWithContext(ctx, &cycleTask)
+	if err != nil {
+		return fmt.Errorf("Could not send task: %s", err.Error())
+	}
+
+	results, err = asyncResult.Get(time.Duration(time.Millisecond * 5))
+	if err != nil {
+		return fmt.Errorf("Getting long running task result failed with error: %s", err.Error())
+	}
+	log.INFO.Printf("Long running task returned = %v\n", tasks.HumanReadableResults(results))
+
+	// Now let's try chaining task results
 
 	return nil
 }

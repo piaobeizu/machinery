@@ -8,14 +8,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/RichardKnop/redsync"
+	"github.com/gomodule/redigo/redis"
 	"github.com/piaobeizu/machinery/v1/brokers/errs"
 	"github.com/piaobeizu/machinery/v1/brokers/iface"
 	"github.com/piaobeizu/machinery/v1/common"
 	"github.com/piaobeizu/machinery/v1/config"
 	"github.com/piaobeizu/machinery/v1/log"
 	"github.com/piaobeizu/machinery/v1/tasks"
-	"github.com/RichardKnop/redsync"
-	"github.com/gomodule/redigo/redis"
 )
 
 var redisDelayedTasksKey = "delayed_tasks"
@@ -295,8 +295,33 @@ func (b *Broker) consumeOne(delivery []byte, taskProcessor iface.TaskProcessor) 
 	}
 
 	log.DEBUG.Printf("Received new message: %s", delivery)
-
-	return taskProcessor.Process(signature)
+	//if signature.CronRule != "" {
+		//timeout := time.After(50 * time.Second)
+		//done := make(chan bool, 1)
+		//go func() {
+		//	c := cron.New()
+		//	c.AddFunc(signature.CronRule, func() {
+		//		taskProcessor.Process(signature)
+		//	})
+		//	c.Start()
+			//select {}
+			//if
+			//c.Stop()
+		//	for {
+		//		select {
+		//		case <-timeout:
+		//			close(done)
+		//			c.Stop()
+		//			log.INFO.Print("close goroutine and cron")
+		//			return
+		//		}
+		//	}
+		//}()
+		//<-done
+	//} else {
+		return taskProcessor.Process(signature)
+	//}
+	//return nil
 }
 
 // nextTask pops next available task from the default queue
