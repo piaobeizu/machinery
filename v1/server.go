@@ -182,6 +182,7 @@ func (server *Server) SendTaskWithContext(ctx context.Context, signature *tasks.
 		server.prePublishHandler(signature)
 	}
 
+	//TODO 对cron表达式做正则检验
 	if signature.CronRule != "" {
 		var (
 			c   *cron.Cron
