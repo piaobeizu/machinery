@@ -182,6 +182,46 @@ func (server *Server) SendTaskWithContext(ctx context.Context, signature *tasks.
 		server.prePublishHandler(signature)
 	}
 
+	if err := server.broker.Publish(ctx, signature); err != nil {
+		return nil, fmt.Errorf("Publish message error: %s", err)
+	}
+
+	return result.NewAsyncResult(signature, server.backend), nil
+}
+
+// SendTask publishes a task to the default queue
+func (server *Server) SendTask(signature *tasks.Signature) (*result.AsyncResult, error) {
+	return server.SendTaskWithContext(context.Background(), signature)
+}
+
+// SendTaskWithContext will inject the trace context in the signature headers before publishing it
+func (server *Server) SendCycleWithContext(ctx context.Context, signature *tasks.Signature) (*result.AsyncResult, error) {
+	span, _ := opentracing.StartSpanFromContext(ctx, "SendTask", tracing.ProducerOption(), tracing.MachineryTag)
+	defer span.Finish()
+
+	// tag the span with some info about the signature
+	signature.Headers = tracing.HeadersWithSpan(signature.Headers, span)
+
+	// Make sure result backend is defined
+	if server.backend == nil {
+		return nil, errors.New("Result backend required")
+	}
+
+	// Auto generate a UUID if not set already
+	if signature.UUID == "" {
+		taskID := uuid.New().String()
+		signature.UUID = fmt.Sprintf("task_%v", taskID)
+	}
+
+	// Set initial task state to PENDING
+	if err := server.backend.SetStatePending(signature); err != nil {
+		return nil, fmt.Errorf("Set state pending error: %s", err)
+	}
+
+	if server.prePublishHandler != nil {
+		server.prePublishHandler(signature)
+	}
+
 	if signature.CronRule != "" {
 		var (
 			c   *cron.Cron
@@ -216,8 +256,8 @@ func (server *Server) SendTaskWithContext(ctx context.Context, signature *tasks.
 }
 
 // SendTask publishes a task to the default queue
-func (server *Server) SendTask(signature *tasks.Signature) (*result.AsyncResult, error) {
-	return server.SendTaskWithContext(context.Background(), signature)
+func (server *Server) SendCycle(signature *tasks.Signature) (*result.AsyncResult, error) {
+	return server.SendCycleWithContext(context.Background(), signature)
 }
 
 // SendChainWithContext will inject the trace context in all the signature headers before publishing it
