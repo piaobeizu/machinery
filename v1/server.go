@@ -182,7 +182,6 @@ func (server *Server) SendTaskWithContext(ctx context.Context, signature *tasks.
 		server.prePublishHandler(signature)
 	}
 
-	//TODO 对cron表达式做正则检验
 	if signature.CronRule != "" {
 		var (
 			c   *cron.Cron
@@ -196,12 +195,16 @@ func (server *Server) SendTaskWithContext(ctx context.Context, signature *tasks.
 		} else {
 			c = cron.New(cron.WithSeconds())
 		}
-		c.AddFunc(signature.CronRule, func() {
+		//AddFunc 函数中包含了对cron表达式的校验
+		_, err = c.AddFunc(signature.CronRule, func() {
 			log.INFO.Printf("start publish message")
 			if err := server.broker.Publish(ctx, signature); err != nil {
 				log.ERROR.Printf("Publish message error: %s", err)
 			}
 		})
+		if err != nil {
+			return nil, fmt.Errorf("add cron task error: %s", err)
+		}
 		c.Start()
 	} else {
 		if err := server.broker.Publish(ctx, signature); err != nil {
