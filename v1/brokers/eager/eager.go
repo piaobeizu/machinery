@@ -71,3 +71,17 @@ func (eagerBroker *Broker) GetPendingTasks(queue string) ([]*tasks.Signature, er
 func (eagerBroker *Broker) AssignWorker(w iface.TaskProcessor) {
 	eagerBroker.worker = w
 }
+
+// get cycle signatures
+func (b *Broker) GetCycleTasks(queue string) ([]*tasks.Signature, error) {
+	return nil, nil
+}
+
+// add cycle signature
+func (b *Broker) AddCycleTask(signature *tasks.Signature) (*tasks.Signature, error) {
+	return signature, nil
+}
+
+func (b *Broker) DeleteCycleTask(uuid string) (error) {
+	return nil
+}

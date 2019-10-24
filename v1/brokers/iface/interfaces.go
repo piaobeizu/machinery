@@ -17,6 +17,10 @@ type Broker interface {
 	Publish(ctx context.Context, task *tasks.Signature) error
 	GetPendingTasks(queue string) ([]*tasks.Signature, error)
 	AdjustRoutingKey(s *tasks.Signature)
+	// cycle signatures monitor
+	GetCycleTasks(queue string) ([]*tasks.Signature, error)
+	AddCycleTask(signature *tasks.Signature) (*tasks.Signature, error)
+	DeleteCycleTask(uuid string) error
 }
 
 // TaskProcessor - can process a delivered task

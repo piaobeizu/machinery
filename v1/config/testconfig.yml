@@ -1,7 +1,7 @@
 ---
-broker: 'redis://123456@10.70.19.170:6379'
+broker: 'redis://localhost:6379/10'
 default_queue: default_queue
-result_backend: 'redis://123456@10.70.19.170:6379'
+result_backend: 'redis://localhost:6379/9'
 results_expire_in: 123456
 #amqp:
 #  binding_key: binding_key

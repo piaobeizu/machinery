@@ -7,6 +7,7 @@ import (
 	"github.com/piaobeizu/cron"
 	"github.com/piaobeizu/machinery/v1/log"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/piaobeizu/machinery/v1/backends/result"
@@ -25,10 +26,13 @@ import (
 type Server struct {
 	config            *config.Config
 	registeredTasks   map[string]interface{}
+	cycleSignatures   map[string]*tasks.Signature //周期调度的signature
 	broker            brokersiface.Broker
 	backend           backendsiface.Backend
 	prePublishHandler func(*tasks.Signature)
 }
+
+var cycleSignatures = make(map[string]*tasks.Signature)
 
 // NewServerWithBrokerBackend ...
 func NewServerWithBrokerBackend(cnf *config.Config, brokerServer brokersiface.Broker, backendServer backendsiface.Backend) *Server {
@@ -59,6 +63,8 @@ func NewServer(cnf *config.Config) (*Server, error) {
 		eager.AssignWorker(srv.NewWorker("eager", 0))
 	}
 
+	// 启动cycle任务监控
+	err = cycleTaskMonitor(srv)
 	return srv, nil
 }
 
@@ -221,37 +227,16 @@ func (server *Server) SendCycleWithContext(ctx context.Context, signature *tasks
 	if server.prePublishHandler != nil {
 		server.prePublishHandler(signature)
 	}
-
-	if signature.CronRule != "" {
-		var (
-			c   *cron.Cron
-			err error
-		)
-		if signature.StartTime > 0 && signature.EndTime > 0 {
-			c, err = cron.DelayNew(signature.StartTime, signature.EndTime, cron.WithSeconds())
-			if err != nil {
-				log.ERROR.Printf("create cron task error, cause is: %s", err)
-			}
-		} else {
-			c = cron.New(cron.WithSeconds())
-		}
-		//AddFunc 函数中包含了对cron表达式的校验
-		_, err = c.AddFunc(signature.CronRule, func() {
-			log.INFO.Printf("start publish message")
-			if err := server.broker.Publish(ctx, signature); err != nil {
-				log.ERROR.Printf("Publish message error: %s", err)
-			}
-		})
-		if err != nil {
-			return nil, fmt.Errorf("add cron task error: %s", err)
-		}
-		c.Start()
-	} else {
-		if err := server.broker.Publish(ctx, signature); err != nil {
-			return nil, fmt.Errorf("Publish message error: %s", err)
-		}
+	// 注册cycle任务到broker
+	_, err := server.broker.AddCycleTask(signature)
+	if err != nil {
+		return nil, err
 	}
-
+	// 添加signature到cycleSignatures
+	cycleSignatures[signature.UUID] = signature
+	if err = addCycleToCron(signature, server); err != nil {
+		return nil, err
+	}
 	return result.NewAsyncResult(signature, server.backend), nil
 }
 
@@ -394,4 +379,80 @@ func (server *Server) GetRegisteredTaskNames() []string {
 		i++
 	}
 	return taskNames
+}
+
+func cycleTaskMonitor(server *Server) error {
+	log.INFO.Println("start monitor cycle task")
+	// 获取redis存储的cycle signature
+	signatures, err := server.broker.GetCycleTasks("")
+	if err != nil {
+		return err
+	}
+	for _, signature := range signatures {
+		if _, ok := cycleSignatures[signature.UUID]; !ok {
+			cycleSignatures[signature.UUID] = signature
+		}
+		if signature.EndTime > time.Now().Unix() {
+			if err = addCycleToCron(signature, server); err != nil {
+				log.ERROR.Println("add cron task [%v] error, %v", signature, err)
+				return err
+			}
+		}
+	}
+	// 定时每隔1分钟清理到期的cycle signature
+	c := cron.New(cron.WithSeconds())
+	//AddFunc 函数中包含了对cron表达式的校验
+	_, err = c.AddFunc("* */1 * * * ?", func() {
+		for key, sig := range cycleSignatures {
+			if sig.EndTime < time.Now().Unix() {
+				if err = server.broker.DeleteCycleTask(key); err != nil {
+					log.INFO.Printf("delete cycle task [%v] error, %v", sig, err)
+				}
+				delete(cycleSignatures, key)
+				log.INFO.Printf("delete cycle task which is ended, %v", sig)
+			}
+		}
+	})
+	c.Start()
+	if err != nil {
+		log.ERROR.Println("add cron to delete end task error, %v", err)
+		return nil
+	}
+	return nil
+}
+
+func addCycleToCron(signature *tasks.Signature, server *Server) error {
+	if signature.CronRule != "" {
+		var (
+			c   *cron.Cron
+			err error
+		)
+		if signature.StartTime > 0 && signature.EndTime > 0 {
+			c, err = cron.DelayNew(signature.StartTime, signature.EndTime, cron.WithSeconds())
+			if err != nil {
+				log.ERROR.Printf("create cron task error, cause is: %s", err)
+				return fmt.Errorf("create cron task error, cause is: %s", err)
+			}
+		} else {
+			c = cron.New(cron.WithSeconds())
+		}
+		//AddFunc 函数中包含了对cron表达式的校验
+		_, err = c.AddFunc(signature.CronRule, func() {
+			log.INFO.Printf("start publish message")
+			if err := server.broker.Publish(context.Background(), signature); err != nil {
+				log.ERROR.Printf("Publish message error: %s", err)
+			}
+		})
+		if err != nil {
+			log.ERROR.Printf("add cron task error: %s", err)
+			return err
+		}
+		c.Start()
+	} else {
+		if err := server.broker.Publish(context.Background(), signature); err != nil {
+			log.ERROR.Printf("Publish message error: %s", err)
+			return nil
+		}
+	}
+	return nil
 }

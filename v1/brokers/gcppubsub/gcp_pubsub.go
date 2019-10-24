@@ -163,6 +163,16 @@ func (b *Broker) Publish(ctx context.Context, signature *tasks.Signature) error 
 	return nil
 }
 
+// get cycle signatures
+func (b *Broker) GetCycleTasks(queue string) ([]*tasks.Signature, error) {
+	return nil, nil
+}
+
+// add cycle signature
+func (b *Broker) AddCycleTask(signature *tasks.Signature) (*tasks.Signature, error) {
+	return signature, nil
+}
+
 // consumeOne processes a single message using TaskProcessor
 func (b *Broker) consumeOne(delivery *pubsub.Message, taskProcessor iface.TaskProcessor) {
 	if len(delivery.Data) == 0 {
@@ -193,4 +203,8 @@ func (b *Broker) consumeOne(delivery *pubsub.Message, taskProcessor iface.TaskPr
 
 	// Call Ack() after successfully consuming and processing the message
 	delivery.Ack()
+}
+
+func (b *Broker) DeleteCycleTask(uuid string) (error) {
+	return nil
 }

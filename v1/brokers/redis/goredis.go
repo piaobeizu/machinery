@@ -10,14 +10,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/RichardKnop/redsync"
+	"github.com/go-redis/redis"
 	"github.com/piaobeizu/machinery/v1/brokers/errs"
 	"github.com/piaobeizu/machinery/v1/brokers/iface"
 	"github.com/piaobeizu/machinery/v1/common"
 	"github.com/piaobeizu/machinery/v1/config"
 	"github.com/piaobeizu/machinery/v1/log"
 	"github.com/piaobeizu/machinery/v1/tasks"
-	"github.com/RichardKnop/redsync"
-	"github.com/go-redis/redis"
 )
 
 // Broker represents a Redis broker
@@ -207,6 +207,20 @@ func (b *BrokerGR) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
 		taskSignatures[i] = signature
 	}
 	return taskSignatures, nil
+}
+
+// get cycle signatures
+func (b *BrokerGR) GetCycleTasks(queue string) ([]*tasks.Signature, error) {
+	return nil, nil
+}
+
+// add cycle signature
+func (b *BrokerGR) AddCycleTask(signature *tasks.Signature) (*tasks.Signature, error) {
+	return signature, nil
+}
+
+func (b *BrokerGR) DeleteCycleTask(uuid string) ( error) {
+	return nil
 }
 
 // consume takes delivered messages from the channel and manages a worker pool

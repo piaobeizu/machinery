@@ -55,13 +55,13 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 	conn, channel, queue, _, amqpCloseChan, err := b.Connect(
 		b.GetConfig().Broker,
 		b.GetConfig().TLSConfig,
-		b.GetConfig().AMQP.Exchange,     // exchange name
-		b.GetConfig().AMQP.ExchangeType, // exchange type
-		queueName,                       // queue name
-		true,                            // queue durable
-		false,                           // queue delete when unused
-		b.GetConfig().AMQP.BindingKey,   // queue binding key
-		nil,                             // exchange declare args
+		b.GetConfig().AMQP.Exchange,                     // exchange name
+		b.GetConfig().AMQP.ExchangeType,                 // exchange type
+		queueName,                                       // queue name
+		true,                                            // queue durable
+		false,                                           // queue delete when unused
+		b.GetConfig().AMQP.BindingKey,                   // queue binding key
+		nil,                                             // exchange declare args
 		amqp.Table(b.GetConfig().AMQP.QueueDeclareArgs), // queue declare args
 		amqp.Table(b.GetConfig().AMQP.QueueBindingArgs), // queue binding args
 	)
@@ -211,8 +211,8 @@ func (b *Broker) Publish(ctx context.Context, signature *tasks.Signature) error 
 
 	connection, err := b.GetOrOpenConnection(
 		queue,
-		bindingKey, // queue binding key
-		nil,        // exchange declare args
+		bindingKey,                                      // queue binding key
+		nil,                                             // exchange declare args
 		amqp.Table(b.GetConfig().AMQP.QueueDeclareArgs), // queue declare args
 		amqp.Table(b.GetConfig().AMQP.QueueBindingArgs), // queue binding args
 	)
@@ -369,14 +369,14 @@ func (b *Broker) delay(signature *tasks.Signature, delayMs int64) error {
 	conn, channel, _, _, _, err := b.Connect(
 		b.GetConfig().Broker,
 		b.GetConfig().TLSConfig,
-		b.GetConfig().AMQP.Exchange,     // exchange name
-		b.GetConfig().AMQP.ExchangeType, // exchange type
-		queueName,                       // queue name
-		true,                            // queue durable
-		b.GetConfig().AMQP.AutoDelete,   // queue delete when unused
-		queueName,                       // queue binding key
-		nil,                             // exchange declare args
-		declareQueueArgs,                // queue declare args
+		b.GetConfig().AMQP.Exchange,                     // exchange name
+		b.GetConfig().AMQP.ExchangeType,                 // exchange type
+		queueName,                                       // queue name
+		true,                                            // queue durable
+		b.GetConfig().AMQP.AutoDelete,                   // queue delete when unused
+		queueName,                                       // queue binding key
+		nil,                                             // exchange declare args
+		declareQueueArgs,                                // queue declare args
 		amqp.Table(b.GetConfig().AMQP.QueueBindingArgs), // queue binding args
 	)
 	if err != nil {
@@ -424,4 +424,18 @@ func (b *Broker) AdjustRoutingKey(s *tasks.Signature) {
 	}
 
 	s.RoutingKey = b.GetConfig().DefaultQueue
+}
+
+// get cycle signatures
+func (b *Broker) GetCycleTasks(queue string) ([]*tasks.Signature, error) {
+	return nil, nil
+}
+
+// add cycle signature
+func (b *Broker) AddCycleTask(signature *tasks.Signature) (*tasks.Signature, error) {
+	return signature, nil
+}
+
+func (b *Broker) DeleteCycleTask(uuid string) (error) {
+	return nil
 }

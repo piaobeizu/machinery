@@ -22,6 +22,7 @@ var (
 	defaultCnf = &Config{
 		Broker:          "amqp://guest:guest@localhost:5672/",
 		DefaultQueue:    "machinery_tasks",
+		CycleQueue:      "cycle_tasks",
 		ResultBackend:   "amqp://guest:guest@localhost:5672/",
 		ResultsExpireIn: DefaultResultsExpireIn,
 		AMQP: &AMQPConfig{
@@ -55,6 +56,7 @@ var (
 type Config struct {
 	Broker          string           `yaml:"broker" envconfig:"BROKER"`
 	DefaultQueue    string           `yaml:"default_queue" envconfig:"DEFAULT_QUEUE"`
+	CycleQueue      string           `yaml:"cycle_queue" envconfig:"CYCLE_QUEUE"`
 	ResultBackend   string           `yaml:"result_backend" envconfig:"RESULT_BACKEND"`
 	ResultsExpireIn int              `yaml:"results_expire_in" envconfig:"RESULTS_EXPIRE_IN"`
 	AMQP            *AMQPConfig      `yaml:"amqp"`
@@ -142,8 +144,8 @@ type RedisConfig struct {
 
 	// DelayedTasksPollPeriod specifies the period in milliseconds when polling redis for delayed tasks
 	// Default: 20
-	DelayedTasksPollPeriod int `yaml:"delayed_tasks_poll_period" envconfig:"REDIS_DELAYED_TASKS_POLL_PERIOD"`
-	DelayedTasksKey string `yaml:"delayed_tasks_key" envconfig:"REDIS_DELAYED_TASKS_KEY"`
+	DelayedTasksPollPeriod int    `yaml:"delayed_tasks_poll_period" envconfig:"REDIS_DELAYED_TASKS_POLL_PERIOD"`
+	DelayedTasksKey        string `yaml:"delayed_tasks_key" envconfig:"REDIS_DELAYED_TASKS_KEY"`
 }
 
 // GCPPubSubConfig wraps GCP PubSub related configuration

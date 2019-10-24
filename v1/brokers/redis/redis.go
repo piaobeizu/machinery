@@ -224,6 +224,68 @@ func (b *Broker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
 	return taskSignatures, nil
 }
 
+// get cycle signatures
+func (b *Broker) GetCycleTasks(queue string) ([]*tasks.Signature, error) {
+	conn := b.open()
+	defer conn.Close()
+
+	if queue == "" {
+		queue = b.GetConfig().CycleQueue
+	}
+	dataBytes, err := conn.Do("HGETALL", queue)
+	if err != nil {
+		return nil, err
+	}
+	results, err := redis.ByteSlices(dataBytes, err)
+	if err != nil {
+		return nil, err
+	}
+	taskSignatures := make([]*tasks.Signature, len(results)/2)
+	for i := 0; i < len(results); i = i + 2 {
+		signature := new(tasks.Signature)
+		decoder := json.NewDecoder(bytes.NewReader(results[i+1]))
+		decoder.UseNumber()
+		if err := decoder.Decode(signature); err != nil {
+			return nil, err
+		}
+		// 将signature放入
+		taskSignatures[i/2] = signature
+	}
+	return taskSignatures, nil
+}
+
+// get cycle signatures
+func (b *Broker) AddCycleTask(signature *tasks.Signature) (*tasks.Signature, error) {
+	conn := b.open()
+	defer conn.Close()
+
+	queue := b.GetConfig().CycleQueue
+
+	msg, err := json.Marshal(signature)
+	if err != nil {
+		return nil, fmt.Errorf("JSON marshal error: %s", err)
+	}
+
+	_, err = conn.Do("HSET", queue, signature.UUID, msg)
+	if err != nil {
+		return nil, err
+	}
+	return signature, nil
+}
+
+func (b *Broker) DeleteCycleTask(uuid string) error {
+	conn := b.open()
+	defer conn.Close()
+
+	queue := b.GetConfig().CycleQueue
+
+	_, err := conn.Do("HDEL", queue, uuid)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // consume takes delivered messages from the channel and manages a worker pool
 // to process tasks concurrently
 func (b *Broker) consume(deliveries <-chan []byte, concurrency int, taskProcessor iface.TaskProcessor) error {
@@ -295,33 +357,7 @@ func (b *Broker) consumeOne(delivery []byte, taskProcessor iface.TaskProcessor) 
 	}
 
 	log.DEBUG.Printf("Received new message: %s", delivery)
-	//if signature.CronRule != "" {
-		//timeout := time.After(50 * time.Second)
-		//done := make(chan bool, 1)
-		//go func() {
-		//	c := cron.New()
-		//	c.AddFunc(signature.CronRule, func() {
-		//		taskProcessor.Process(signature)
-		//	})
-		//	c.Start()
-			//select {}
-			//if
-			//c.Stop()
-		//	for {
-		//		select {
-		//		case <-timeout:
-		//			close(done)
-		//			c.Stop()
-		//			log.INFO.Print("close goroutine and cron")
-		//			return
-		//		}
-		//	}
-		//}()
-		//<-done
-	//} else {
-		return taskProcessor.Process(signature)
-	//}
-	//return nil
+	return taskProcessor.Process(signature)
 }
 
 // nextTask pops next available task from the default queue

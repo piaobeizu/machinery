@@ -25,4 +25,7 @@ type Backend interface {
 	IsAMQP() bool
 	PurgeState(taskUUID string) error
 	PurgeGroupMeta(groupUUID string) error
+
+	// 设置cycle signatures
+
 }

@@ -9,15 +9,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
 	"github.com/piaobeizu/machinery/v1/brokers/errs"
 	"github.com/piaobeizu/machinery/v1/brokers/iface"
 	"github.com/piaobeizu/machinery/v1/common"
 	"github.com/piaobeizu/machinery/v1/config"
 	"github.com/piaobeizu/machinery/v1/log"
 	"github.com/piaobeizu/machinery/v1/tasks"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
 
 	awssqs "github.com/aws/aws-sdk-go/service/sqs"
 )
@@ -180,6 +180,20 @@ func (b *Broker) Publish(ctx context.Context, signature *tasks.Signature) error 
 	log.INFO.Printf("Sending a message successfully, the messageId is %v", *result.MessageId)
 	return nil
 
+}
+
+// get cycle signatures
+func (b *Broker) GetCycleTasks(queue string) ([]*tasks.Signature, error) {
+	return nil, nil
+}
+
+// add cycle signature
+func (b *Broker) AddCycleTask(signature *tasks.Signature) (*tasks.Signature, error) {
+	return signature, nil
+}
+
+func (b *Broker) DeleteCycleTask(uuid string) (error) {
+	return nil
 }
 
 // consume is a method which keeps consuming deliveries from a channel, until there is an error or a stop signal
