@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/piaobeizu/machinery/v1/monitor"
 	"strconv"
 	"strings"
 	"sync"
@@ -222,6 +223,16 @@ func (b *BrokerGR) AddCycleTask(signature *tasks.Signature) (*tasks.Signature, e
 func (b *BrokerGR) DeleteCycleTask(uuid string) ( error) {
 	return nil
 }
+
+// add cycle signature
+func (b *BrokerGR) SendHeartbeat(ctx context.Context, heartbeat *monitor.Heartbeat) error {
+	return nil
+}
+
+func (b *BrokerGR) ConsumeHeartbeat() (*monitor.Heartbeat, error) {
+	return nil, nil
+}
+
 
 // consume takes delivered messages from the channel and manages a worker pool
 // to process tasks concurrently

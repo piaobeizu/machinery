@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/piaobeizu/cron"
 	"github.com/piaobeizu/machinery/v1/log"
+	"github.com/piaobeizu/machinery/v1/monitor"
 	"sync"
 	"time"
 
@@ -25,6 +26,7 @@ import (
 // All the tasks workers process are registered against the server
 type Server struct {
 	config            *config.Config
+	monitor           *Monitor
 	registeredTasks   map[string]interface{}
 	cycleSignatures   map[string]*tasks.Signature //周期调度的signature
 	broker            brokersiface.Broker
@@ -37,7 +39,11 @@ var cycleSignatures = make(map[string]*tasks.Signature)
 // NewServerWithBrokerBackend ...
 func NewServerWithBrokerBackend(cnf *config.Config, brokerServer brokersiface.Broker, backendServer backendsiface.Backend) *Server {
 	return &Server{
-		config:          cnf,
+		config: cnf,
+		monitor: &Monitor{
+			MType:  monitor.MACHINERY_SERVER,
+			Broker: brokerServer,
+		},
 		registeredTasks: make(map[string]interface{}),
 		broker:          brokerServer,
 		backend:         backendServer,
@@ -60,22 +66,37 @@ func NewServer(cnf *config.Config) (*Server, error) {
 	eager, ok := broker.(eager.Mode)
 	if ok {
 		// we don't have to call worker.Launch in eager mode
-		eager.AssignWorker(srv.NewWorker("eager", 0))
+		eager.AssignWorker(srv.NewWorker("eager", "eager", 0, monitor.OTHER_CLUSTER))
 	}
 
-	// 启动cycle任务监控
-	err = cycleTaskMonitor(srv)
 	return srv, nil
 }
 
 // NewWorker creates Worker instance
-func (server *Server) NewWorker(consumerTag string, concurrency int) *Worker {
+func (server *Server) NewWorker(workerName string, consumerTag string, concurrency int, mType monitor.MACHINE_TYPE) *Worker {
 	return &Worker{
-		server:      server,
+		server: server,
+		Monitor: &Monitor{
+			MType:      mType,
+			Broker:     server.broker,
+			WorkerName: workerName,
+		},
 		ConsumerTag: consumerTag,
 		Concurrency: concurrency,
-		Queue:       "",
+		Queue:       string(mType),
 	}
+}
+
+func (server *Server) ServerMonitor() error {
+	// 启动cycle任务监控
+	if err := cycleTaskMonitor(server); err != nil {
+		return err
+	}
+	// 启动server监控
+	if err := server.monitor.ServerMonitor(); err != nil {
+		return err
+	}
+	return nil
 }
 
 // NewCustomQueueWorker creates Worker instance with Custom Queue
@@ -382,7 +403,6 @@ func (server *Server) GetRegisteredTaskNames() []string {
 }
 
 func cycleTaskMonitor(server *Server) error {
-	log.INFO.Println("start monitor cycle task")
 	// 获取redis存储的cycle signature
 	signatures, err := server.broker.GetCycleTasks("")
 	if err != nil {
@@ -414,6 +434,7 @@ func cycleTaskMonitor(server *Server) error {
 		}
 	})
 	c.Start()
+	log.INFO.Println("start monitor cycle task")
 	if err != nil {
 		log.ERROR.Println("add cron to delete end task error, %v", err)
 		return nil

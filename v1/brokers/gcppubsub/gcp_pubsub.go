@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/piaobeizu/machinery/v1/monitor"
 	"time"
 
 	"cloud.google.com/go/pubsub"
@@ -207,4 +208,13 @@ func (b *Broker) consumeOne(delivery *pubsub.Message, taskProcessor iface.TaskPr
 
 func (b *Broker) DeleteCycleTask(uuid string) (error) {
 	return nil
+}
+
+// add cycle signature
+func (b *Broker) SendHeartbeat(ctx context.Context, heartbeat *monitor.Heartbeat) error {
+	return nil
+}
+
+func (b *Broker) ConsumeHeartbeat() (*monitor.Heartbeat, error) {
+	return nil, nil
 }

@@ -2,6 +2,7 @@ package iface
 
 import (
 	"context"
+	"github.com/piaobeizu/machinery/v1/monitor"
 
 	"github.com/piaobeizu/machinery/v1/config"
 	"github.com/piaobeizu/machinery/v1/tasks"
@@ -14,6 +15,9 @@ type Broker interface {
 	IsTaskRegistered(name string) bool
 	StartConsuming(consumerTag string, concurrency int, p TaskProcessor) (bool, error)
 	StopConsuming()
+	SendHeartbeat(ctx context.Context, heartbeat *monitor.Heartbeat) error
+	ConsumeHeartbeat() (*monitor.Heartbeat, error)
+
 	Publish(ctx context.Context, task *tasks.Signature) error
 	GetPendingTasks(queue string) ([]*tasks.Signature, error)
 	AdjustRoutingKey(s *tasks.Signature)

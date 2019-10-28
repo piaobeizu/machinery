@@ -1,6 +1,8 @@
 ---
 broker: 'redis://localhost:6379/10'
-default_queue: default_queue
+default_queue: machinery_tasks
+cycle_queue: cycle_tasks
+monitor_queue: machinery_monitor_queue
 result_backend: 'redis://localhost:6379/9'
 results_expire_in: 123456
 #amqp:

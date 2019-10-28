@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/piaobeizu/machinery/v1/monitor"
 	"sync"
 	"time"
 
@@ -438,4 +439,13 @@ func (b *Broker) AddCycleTask(signature *tasks.Signature) (*tasks.Signature, err
 
 func (b *Broker) DeleteCycleTask(uuid string) (error) {
 	return nil
+}
+
+// add cycle signature
+func (b *Broker) SendHeartbeat(ctx context.Context, heartbeat *monitor.Heartbeat) error {
+	return nil
+}
+
+func (b *Broker) ConsumeHeartbeat() (*monitor.Heartbeat, error) {
+	return nil, nil
 }

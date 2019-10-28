@@ -5,9 +5,11 @@ require (
 	cloud.google.com/go/storage v1.1.0 // indirect
 	github.com/RichardKnop/logging v0.0.0-20190827224416-1a693bdd4fae
 	github.com/RichardKnop/redsync v1.2.0
+	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/aws/aws-sdk-go v1.25.8
 	github.com/bradfitz/gomemcache v0.0.0-20190913173617-a41fca850d0b
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
+	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/go-redis/redis v6.15.6+incompatible
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/golang/groupcache v0.0.0-20191002201903-404acd9df4cc // indirect
@@ -21,6 +23,7 @@ require (
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/piaobeizu/cron v0.2.2
 	github.com/pkg/errors v0.8.1
+	github.com/shirou/gopsutil v2.19.9+incompatible
 	github.com/streadway/amqp v0.0.0-20190827072141-edfb9018d271
 	github.com/stretchr/testify v1.3.0
 	github.com/stvp/tempredis v0.0.0-20181119212430-b82af8480203 // indirect

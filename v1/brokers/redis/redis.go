@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/piaobeizu/machinery/v1/monitor"
 	"sync"
 	"time"
 
@@ -150,6 +151,43 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 	b.processingWG.Wait()
 
 	return b.GetRetry(), nil
+}
+
+// StartConsuming enters a loop and waits for incoming messages
+func (b *Broker) SendHeartbeat(ctx context.Context, heartbeat *monitor.Heartbeat) error {
+	// Adjust routing key (this decides which queue the message will be published to)
+
+	msg, err := json.Marshal(heartbeat)
+	if err != nil {
+		return fmt.Errorf("JSON marshal error: %s", err)
+	}
+
+	conn := b.open()
+	defer conn.Close()
+
+	_, err = conn.Do("RPUSH", b.GetConfig().MonitorQueue, msg)
+	return err
+}
+
+// StartConsuming enters a loop and waits for incoming messages
+func (b *Broker) ConsumeHeartbeat() (*monitor.Heartbeat, error) {
+	conn := b.open()
+	defer conn.Close()
+	items, err := redis.ByteSlices(conn.Do("BLPOP", b.GetConfig().MonitorQueue, 0))
+	if err != nil {
+		return nil, err
+	}
+	if len(items) != 2 {
+		return nil, redis.ErrNil
+	}
+	heartbeat := new(monitor.Heartbeat)
+	decoder := json.NewDecoder(bytes.NewReader(items[1]))
+	decoder.UseNumber()
+	if err := decoder.Decode(heartbeat); err != nil {
+		log.ERROR.Print("decode heartbeat error %v", err)
+		return nil, err
+	}
+	return heartbeat, nil
 }
 
 // StopConsuming quits the loop

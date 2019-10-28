@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/piaobeizu/machinery/v1/monitor"
 
 	"github.com/piaobeizu/machinery/v1/brokers/iface"
 	"github.com/piaobeizu/machinery/v1/common"
@@ -84,4 +85,13 @@ func (b *Broker) AddCycleTask(signature *tasks.Signature) (*tasks.Signature, err
 
 func (b *Broker) DeleteCycleTask(uuid string) (error) {
 	return nil
+}
+
+// add cycle signature
+func (b *Broker) SendHeartbeat(ctx context.Context, heartbeat *monitor.Heartbeat) error {
+	return nil
+}
+
+func (b *Broker) ConsumeHeartbeat() (*monitor.Heartbeat, error) {
+	return nil, nil
 }

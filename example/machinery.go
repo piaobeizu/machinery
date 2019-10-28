@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/piaobeizu/machinery/v1/monitor"
 	"os"
 	"time"
 
@@ -81,7 +82,7 @@ func loadConfig() (*config.Config, error) {
 	return config.NewFromEnvironment(true)
 }
 
-func startServer() (*machinery.Server, error) {
+func startServer(monitor bool) (*machinery.Server, error) {
 	cnf, err := loadConfig()
 	if err != nil {
 		return nil, err
@@ -92,7 +93,9 @@ func startServer() (*machinery.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	if monitor {
+		server.ServerMonitor()
+	}
 	// Register tasks
 	tasks := map[string]interface{}{
 		"add":               exampletasks.Add,
@@ -118,14 +121,14 @@ func worker() error {
 	}
 	defer cleanup()
 
-	server, err := startServer()
+	server, err := startServer(true)
 	if err != nil {
 		return err
 	}
 
 	// The second argument is a consumer tag
 	// Ideally, each worker should have a unique tag (worker1, worker2 etc)
-	worker := server.NewWorker(consumerTag, 0)
+	worker := server.NewWorker("test", consumerTag, 0, monitor.OTHER_CLUSTER)
 
 	// Here we inject some custom code for error handling,
 	// start and end of task hooks, useful for metrics for example.
@@ -155,7 +158,7 @@ func send() error {
 	}
 	defer cleanup()
 
-	server, err := startServer()
+	server, err := startServer(false)
 	if err != nil {
 		return err
 	}
@@ -274,8 +277,9 @@ func send() error {
 		}
 
 		cycleTask = tasks.Signature{
-			Name:     "cycle_task",
-			CronRule: "*/10 * * * * ?",
+			Name:          "cycle_task",
+			CronRule:      "*/10 * * * * ?",
+			TargetMachine: monitor.OTHER_CLUSTER,
 		}
 	}
 
@@ -470,21 +474,6 @@ func send() error {
 	}
 
 	results, err := asyncResult.Get(time.Duration(time.Millisecond * 5))
-	if err != nil {
-		return fmt.Errorf("Getting cycle task result failed with error: %s", err.Error())
-	}
-	log.INFO.Printf("Long running task returned = %v\n", tasks.HumanReadableResults(results))
-
-	time.Sleep(time.Second * 10)
-	now = time.Now().Unix()
-	cycleTask.StartTime = now + 1
-	cycleTask.EndTime = now + 22
-	asyncResult, err = server.SendCycleWithContext(ctx, &cycleTask)
-	if err != nil {
-		return fmt.Errorf("Could not send task: %s", err.Error())
-	}
-
-	results, err = asyncResult.Get(time.Duration(time.Millisecond * 5))
 	if err != nil {
 		return fmt.Errorf("Getting cycle task result failed with error: %s", err.Error())
 	}

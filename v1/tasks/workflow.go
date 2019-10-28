@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
+//TODO 实现chain任务的定时调度和执行区间
 // Chain creates a chain of tasks to be executed one after another
 type Chain struct {
 	Tasks []*Signature

@@ -117,5 +117,6 @@ func (b *Broker) AdjustRoutingKey(s *tasks.Signature) {
 		return
 	}
 
-	s.RoutingKey = b.GetConfig().DefaultQueue
+	//s.RoutingKey = b.GetConfig().DefaultQueue
+	s.RoutingKey = string(s.TargetMachine)
 }

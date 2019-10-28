@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"fmt"
+	"github.com/piaobeizu/machinery/v1/monitor"
 	"time"
 
 	"github.com/google/uuid"
@@ -61,6 +62,7 @@ type Signature struct {
 	OnSuccess      []*Signature
 	OnError        []*Signature
 	ChordCallback  *Signature
+	TargetMachine  monitor.MACHINE_TYPE //设置接收消息的worker集群
 	//MessageGroupId for Broker, e.g. SQS
 	BrokerMessageGroupId string
 	//ReceiptHandle of SQS Message

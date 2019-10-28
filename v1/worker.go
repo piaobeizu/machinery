@@ -3,23 +3,25 @@ package machinery
 import (
 	"errors"
 	"fmt"
+	"github.com/piaobeizu/machinery/v1/monitor"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/piaobeizu/machinery/v1/backends/amqp"
 	"github.com/piaobeizu/machinery/v1/brokers/errs"
 	"github.com/piaobeizu/machinery/v1/log"
 	"github.com/piaobeizu/machinery/v1/retry"
 	"github.com/piaobeizu/machinery/v1/tasks"
 	"github.com/piaobeizu/machinery/v1/tracing"
-	"github.com/opentracing/opentracing-go"
 )
 
 // Worker represents a single worker process
 type Worker struct {
 	server          *Server
+	Monitor         *Monitor
 	ConsumerTag     string
 	Concurrency     int
 	Queue           string
@@ -34,7 +36,10 @@ func (worker *Worker) Launch() error {
 	errorsChan := make(chan error)
 
 	worker.LaunchAsync(errorsChan)
-
+	// 启动监控
+	if err := worker.Monitor.WorkerMonitor(); err != nil {
+		return err
+	}
 	return <-errorsChan
 }
 
@@ -395,4 +400,16 @@ func (worker *Worker) SetPostTaskHandler(handler func(*tasks.Signature)) {
 //GetServer returns server
 func (worker *Worker) GetServer() *Server {
 	return worker.server
+}
+
+//get machines status
+func (worker *Worker) GetMachinesStatus() []*monitor.Heartbeat {
+	var machinesStatus []*monitor.Heartbeat
+	for _, machine := range Machines {
+		for _, m := range machine {
+			//TODO 根据heartbeat对机器做相应的监控数据提取
+			machinesStatus = append(machinesStatus, m)
+		}
+	}
+	return machinesStatus
 }
