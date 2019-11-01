@@ -1,6 +1,7 @@
 ---
 broker: 'redis://localhost:6379/10'
 default_queue: machinery_tasks
+#  binding_key: binding_key
 cycle_queue: cycle_tasks
 monitor_queue: machinery_monitor_queue
 result_backend: 'redis://localhost:6379/9'

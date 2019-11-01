@@ -402,6 +402,10 @@ func (server *Server) GetRegisteredTaskNames() []string {
 	return taskNames
 }
 
+func (server *Server) GetCycleTasks() map[string]*tasks.Signature {
+	return server.cycleSignatures
+}
+
 func cycleTaskMonitor(server *Server) error {
 	// 获取redis存储的cycle signature
 	signatures, err := server.broker.GetCycleTasks("")
