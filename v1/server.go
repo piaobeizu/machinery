@@ -255,6 +255,7 @@ func (server *Server) SendCycleWithContext(ctx context.Context, signature *tasks
 	}
 	// 添加signature到cycleSignatures
 	server.cycleSignatures[signature.UUID] = signature
+	signature.ExecCount = 0
 	if err = addCycleToCron(signature, server); err != nil {
 		return nil, err
 	}
@@ -475,7 +476,8 @@ func addCycleToCron(signature *tasks.Signature, server *Server) error {
 		}
 		//AddFunc 函数中包含了对cron表达式的校验
 		_, err = c.AddFunc(signature.CronRule, func() {
-			log.INFO.Printf("start publish message")
+			signature.ExecCount++
+			log.INFO.Printf("start publish signature [%s] for %d times", signature.Name, signature.ExecCount)
 			if err := server.broker.Publish(context.Background(), signature); err != nil {
 				log.ERROR.Printf("Publish message error: %s", err)
 			}

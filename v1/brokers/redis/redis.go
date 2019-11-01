@@ -213,6 +213,9 @@ func (b *Broker) Publish(ctx context.Context, signature *tasks.Signature) error 
 		return fmt.Errorf("JSON marshal error: %s", err)
 	}
 
+	if signature.ExecCount == 0 {
+		signature.ExecCount = 1
+	}
 	conn := b.open()
 	defer conn.Close()
 

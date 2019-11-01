@@ -58,6 +58,7 @@ type Signature struct {
 	CronRule       string //cron表达式
 	StartTime      int64  //任务开始时间
 	EndTime        int64  //任务结束时间
+	ExecCount      int    //周期调度任务执行总次数
 	RetryTimeout   int
 	OnSuccess      []*Signature
 	OnError        []*Signature
