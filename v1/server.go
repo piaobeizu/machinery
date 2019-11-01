@@ -32,9 +32,8 @@ type Server struct {
 	broker            brokersiface.Broker
 	backend           backendsiface.Backend
 	prePublishHandler func(*tasks.Signature)
+	lock              sync.RWMutex
 }
-
-var cycleSignatures = make(map[string]*tasks.Signature)
 
 // NewServerWithBrokerBackend ...
 func NewServerWithBrokerBackend(cnf *config.Config, brokerServer brokersiface.Broker, backendServer backendsiface.Backend) *Server {
@@ -47,6 +46,7 @@ func NewServerWithBrokerBackend(cnf *config.Config, brokerServer brokersiface.Br
 		registeredTasks: make(map[string]interface{}),
 		broker:          brokerServer,
 		backend:         backendServer,
+		cycleSignatures: make(map[string]*tasks.Signature),
 	}
 }
 
@@ -254,7 +254,7 @@ func (server *Server) SendCycleWithContext(ctx context.Context, signature *tasks
 		return nil, err
 	}
 	// 添加signature到cycleSignatures
-	cycleSignatures[signature.UUID] = signature
+	server.cycleSignatures[signature.UUID] = signature
 	if err = addCycleToCron(signature, server); err != nil {
 		return nil, err
 	}
@@ -413,8 +413,8 @@ func cycleTaskMonitor(server *Server) error {
 		return err
 	}
 	for _, signature := range signatures {
-		if _, ok := cycleSignatures[signature.UUID]; !ok {
-			cycleSignatures[signature.UUID] = signature
+		if _, ok := server.cycleSignatures[signature.UUID]; !ok {
+			server.setCycleSignatures(signature)
 		}
 		if signature.EndTime > time.Now().Unix() {
 			if err = addCycleToCron(signature, server); err != nil {
@@ -427,12 +427,12 @@ func cycleTaskMonitor(server *Server) error {
 	c := cron.New(cron.WithSeconds())
 	//AddFunc 函数中包含了对cron表达式的校验
 	_, err = c.AddFunc("* */1 * * * ?", func() {
-		for key, sig := range cycleSignatures {
+		for key, sig := range server.cycleSignatures {
 			if sig.EndTime < time.Now().Unix() {
 				if err = server.broker.DeleteCycleTask(key); err != nil {
 					log.INFO.Printf("delete cycle task [%v] error, %v", sig, err)
 				}
-				delete(cycleSignatures, key)
+				server.delCycleSignatures(key)
 				log.INFO.Printf("delete cycle task which is ended, %v", sig)
 			}
 		}
@@ -444,6 +444,18 @@ func cycleTaskMonitor(server *Server) error {
 		return nil
 	}
 	return nil
+}
+
+func (server *Server) setCycleSignatures(signature *tasks.Signature) {
+	server.lock.Lock()
+	server.cycleSignatures[signature.UUID] = signature
+	server.lock.Unlock()
+}
+
+func (server *Server) delCycleSignatures(key string) {
+	server.lock.Lock()
+	delete(server.cycleSignatures, key)
+	server.lock.Unlock()
 }
 
 func addCycleToCron(signature *tasks.Signature, server *Server) error {
