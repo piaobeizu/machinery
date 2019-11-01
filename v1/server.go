@@ -25,14 +25,15 @@ import (
 // Server is the main Machinery object and stores all configuration
 // All the tasks workers process are registered against the server
 type Server struct {
-	config            *config.Config
-	monitor           *Monitor
-	registeredTasks   map[string]interface{}
-	cycleSignatures   map[string]*tasks.Signature //周期调度的signature
-	broker            brokersiface.Broker
-	backend           backendsiface.Backend
-	prePublishHandler func(*tasks.Signature)
-	lock              sync.RWMutex
+	config              *config.Config
+	monitor             *Monitor
+	registeredTasks     map[string]interface{}
+	cycleSignatures     map[string]*tasks.Signature //周期调度的signature
+	broker              brokersiface.Broker
+	backend             backendsiface.Backend
+	prePublishHandler   func(*tasks.Signature)
+	postDelCycleHandler func(*tasks.Signature)
+	lock                sync.RWMutex
 }
 
 // NewServerWithBrokerBackend ...
@@ -89,7 +90,7 @@ func (server *Server) NewWorker(workerName string, consumerTag string, concurren
 
 func (server *Server) ServerMonitor() error {
 	// 启动cycle任务监控
-	if err := cycleTaskMonitor(server); err != nil {
+	if err := server.cycleTaskMonitor(); err != nil {
 		return err
 	}
 	// 启动server监控
@@ -142,6 +143,9 @@ func (server *Server) SetConfig(cnf *config.Config) {
 // SetPreTaskHandler Sets pre publish handler
 func (server *Server) SetPreTaskHandler(handler func(*tasks.Signature)) {
 	server.prePublishHandler = handler
+}
+func (server *Server) SetPostCycleHandler(handler func(*tasks.Signature)) {
+	server.postDelCycleHandler = handler
 }
 
 // RegisterTasks registers all tasks at once
@@ -256,7 +260,7 @@ func (server *Server) SendCycleWithContext(ctx context.Context, signature *tasks
 	// 添加signature到cycleSignatures
 	server.cycleSignatures[signature.UUID] = signature
 	signature.ExecCount = 0
-	if err = addCycleToCron(signature, server); err != nil {
+	if err = server.addCycleToCron(signature); err != nil {
 		return nil, err
 	}
 	return result.NewAsyncResult(signature, server.backend), nil
@@ -407,7 +411,7 @@ func (server *Server) GetCycleTasks() map[string]*tasks.Signature {
 	return server.cycleSignatures
 }
 
-func cycleTaskMonitor(server *Server) error {
+func (server *Server) cycleTaskMonitor() error {
 	// 获取redis存储的cycle signature
 	signatures, err := server.broker.GetCycleTasks("")
 	if err != nil {
@@ -418,7 +422,7 @@ func cycleTaskMonitor(server *Server) error {
 			server.setCycleSignatures(signature)
 		}
 		if signature.EndTime > time.Now().Unix() {
-			if err = addCycleToCron(signature, server); err != nil {
+			if err = server.addCycleToCron(signature); err != nil {
 				log.ERROR.Println("add cron task [%v] error, %v", signature, err)
 				return err
 			}
@@ -435,6 +439,9 @@ func cycleTaskMonitor(server *Server) error {
 				}
 				server.delCycleSignatures(key)
 				log.INFO.Printf("delete cycle task which is ended, %v", sig)
+				if server.postDelCycleHandler != nil {
+					server.postDelCycleHandler(sig)
+				}
 			}
 		}
 	})
@@ -459,7 +466,7 @@ func (server *Server) delCycleSignatures(key string) {
 	server.lock.Unlock()
 }
 
-func addCycleToCron(signature *tasks.Signature, server *Server) error {
+func (server *Server) addCycleToCron(signature *tasks.Signature) error {
 	if signature.CronRule != "" {
 		var (
 			c   *cron.Cron
