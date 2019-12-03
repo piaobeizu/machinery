@@ -37,8 +37,6 @@ func (monitor *Monitor) WorkerMonitor() error {
 			}
 			//TODO heartbeat设置tasknum
 			monitor.Broker.SendHeartbeat(heartBeat, monitor.Broker.GetConfig().MonitorWorkerQueue)
-		} else {
-			log.WARNING.Printf("there is no server found")
 		}
 	})
 	if err != nil {
@@ -54,7 +52,6 @@ func (monitor *Monitor) WorkerMonitor() error {
 		heartbeat, err2 := monitor.Broker.ConsumeHeartbeat(monitor.Broker.GetConfig().MonitorServerQueue)
 		if err == nil || err2.Error() == "redigo: nil returned" {
 			if heartbeat != nil {
-				_ = append(Machines[heartbeat.MachineType], heartbeat)
 				log.INFO.Printf("receive a server heartbeat %v", heartbeat)
 				currentUnix = heartbeat.Timestamp
 			}
@@ -62,6 +59,7 @@ func (monitor *Monitor) WorkerMonitor() error {
 		serverAlive.Lock()
 		if time.Now().Local().Unix()-currentUnix > 10 {
 			serverAlive.Num = 0
+			log.WARNING.Printf("there is no online server, please start it!!!")
 		} else {
 			serverAlive.Num = 1
 		}
