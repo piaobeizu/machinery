@@ -48,7 +48,7 @@ func (monitor *Monitor) WorkerMonitor() error {
 	// 监控server心跳
 	currentUnix := time.Now().Local().Unix()
 	c2 := cron.New(cron.WithSeconds())
-	_, err2 := c2.AddFunc("*/2 * * * * ?", func() {
+	_, err2 := c2.AddFunc("*/3 * * * * ?", func() {
 		heartbeat, err2 := monitor.Broker.ConsumeHeartbeat(monitor.Broker.GetConfig().MonitorServerQueue)
 		if err == nil || err2.Error() == "redigo: nil returned" {
 			if heartbeat != nil {
@@ -57,7 +57,7 @@ func (monitor *Monitor) WorkerMonitor() error {
 			}
 		}
 		serverAlive.Lock()
-		if time.Now().Local().Unix()-currentUnix > 10 {
+		if time.Now().Local().Unix()-currentUnix > 15 {
 			serverAlive.Num = 0
 			log.WARNING.Printf("there is no online server, please start it!!!")
 		} else {
@@ -76,13 +76,12 @@ func (monitor *Monitor) WorkerMonitor() error {
 // CustomQueue returns Custom Queue of the running worker process
 func (monitor *Monitor) ServerMonitor() error {
 	c := cron.New(cron.WithSeconds())
-	_, err := c.AddFunc("*/2 * * * * ?", func() {
+	_, err := c.AddFunc("*/3 * * * * ?", func() {
 		log.INFO.Printf("server start publish a heartbeat to workers")
 		heartBeat, err := m.NewHeartBeat("server", m.MACHINERY_SERVER)
 		if err != nil {
 			log.ERROR.Printf("create heartbeat error: %v", err)
 		}
-		//TODO heartbeat设置tasknum
 		monitor.Broker.SendHeartbeat(heartBeat, monitor.Broker.GetConfig().MonitorServerQueue)
 	})
 	if err != nil {
