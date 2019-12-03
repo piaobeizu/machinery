@@ -15,8 +15,8 @@ type Broker interface {
 	IsTaskRegistered(name string) bool
 	StartConsuming(consumerTag string, concurrency int, p TaskProcessor) (bool, error)
 	StopConsuming()
-	SendHeartbeat(ctx context.Context, heartbeat *monitor.Heartbeat) error
-	ConsumeHeartbeat() (*monitor.Heartbeat, error)
+	SendHeartbeat(heartbeat *monitor.Heartbeat, queue string) error
+	ConsumeHeartbeat(queue string) (*monitor.Heartbeat, error)
 
 	Publish(ctx context.Context, task *tasks.Signature) error
 	GetPendingTasks(queue string) ([]*tasks.Signature, error)

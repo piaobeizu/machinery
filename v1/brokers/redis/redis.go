@@ -154,40 +154,55 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 }
 
 // StartConsuming enters a loop and waits for incoming messages
-func (b *Broker) SendHeartbeat(ctx context.Context, heartbeat *monitor.Heartbeat) error {
-	// Adjust routing key (this decides which queue the message will be published to)
-
+func (b *Broker) SendHeartbeat(heartbeat *monitor.Heartbeat, queue string) error {
 	msg, err := json.Marshal(heartbeat)
 	if err != nil {
 		return fmt.Errorf("JSON marshal error: %s", err)
 	}
-
 	conn := b.open()
 	defer conn.Close()
-
-	_, err = conn.Do("RPUSH", b.GetConfig().MonitorQueue, msg)
+	if (queue == b.GetConfig().MonitorWorkerQueue) {
+		_, err = conn.Do("RPUSH", queue, msg)
+	} else {
+		_, err = conn.Do("SET", queue, msg)
+	}
 	return err
 }
 
 // StartConsuming enters a loop and waits for incoming messages
-func (b *Broker) ConsumeHeartbeat() (*monitor.Heartbeat, error) {
+func (b *Broker) ConsumeHeartbeat(queue string) (*monitor.Heartbeat, error) {
+	pollPeriod := time.Duration(1000) * time.Millisecond
 	conn := b.open()
 	defer conn.Close()
-	items, err := redis.ByteSlices(conn.Do("BLPOP", b.GetConfig().MonitorQueue, 0))
-	if err != nil {
-		return nil, err
+	if (queue == b.GetConfig().MonitorWorkerQueue) {
+		items, err := redis.ByteSlices(conn.Do("BLPOP", queue, pollPeriod.Seconds()));
+		if err != nil {
+			return nil, err
+		}
+		if len(items) != 2 {
+			return nil, redis.ErrNil
+		}
+		heartbeat := new(monitor.Heartbeat)
+		decoder := json.NewDecoder(bytes.NewReader(items[1]))
+		decoder.UseNumber()
+		if err := decoder.Decode(heartbeat); err != nil {
+			log.ERROR.Print("decode heartbeat error %v", err)
+			return nil, err
+		}
+		return heartbeat, nil
+	} else {
+		item, err := redis.String(conn.Do("GET", queue));
+		if err != nil {
+			return nil, err
+		}
+		var heartbeat monitor.Heartbeat
+		err = json.Unmarshal([]byte(item), &heartbeat)
+		if err != nil {
+			log.ERROR.Print("decode heartbeat error %v", err)
+			return nil, err
+		}
+		return &heartbeat, nil
 	}
-	if len(items) != 2 {
-		return nil, redis.ErrNil
-	}
-	heartbeat := new(monitor.Heartbeat)
-	decoder := json.NewDecoder(bytes.NewReader(items[1]))
-	decoder.UseNumber()
-	if err := decoder.Decode(heartbeat); err != nil {
-		log.ERROR.Print("decode heartbeat error %v", err)
-		return nil, err
-	}
-	return heartbeat, nil
 }
 
 // StopConsuming quits the loop

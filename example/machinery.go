@@ -67,6 +67,16 @@ func main() {
 				return nil
 			},
 		},
+		{
+			Name:  "server",
+			Usage: "send example tasks ",
+			Action: func(c *cli.Context) error {
+				if err := server(); err != nil {
+					return cli.NewExitError(err.Error(), 1)
+				}
+				return nil
+			},
+		},
 	}
 
 	// Run the CLI app
@@ -74,7 +84,7 @@ func main() {
 }
 
 func loadConfig() (*config.Config, error) {
-	configPath = "/Users/steven/develop/code/github/machinery/v1/config/testconfig.yml"
+	configPath = "E:\\develop\\code\\go\\machinery\\v1\\config\\testconfig.yml"
 	if configPath != "" {
 		return config.NewFromYaml(configPath, true)
 	}
@@ -112,6 +122,45 @@ func startServer(monitor bool) (*machinery.Server, error) {
 	return server, server.RegisterTasks(tasks)
 }
 
+func server() error {
+	cnf, err := loadConfig()
+	if err != nil {
+		return err
+	}
+
+	// Create server instance
+	server, err := machinery.NewServer(cnf)
+	if err != nil {
+		return err
+	}
+	server.ServerMonitor()
+	// Register tasks
+	task := map[string]interface{}{
+		"add":               exampletasks.Add,
+		"multiply":          exampletasks.Multiply,
+		"sum_ints":          exampletasks.SumInts,
+		"sum_floats":        exampletasks.SumFloats,
+		"concat":            exampletasks.Concat,
+		"split":             exampletasks.Split,
+		"panic_task":        exampletasks.PanicTask,
+		"long_running_task": exampletasks.LongRunningTask,
+		"cycle_task":        exampletasks.CycleTask,
+	}
+
+	server.RegisterTasks(task)
+	// 设置删除cycle任务后的钩子
+	delCycleHandler := func(signature *tasks.Signature) {
+		//has, task := entity.FindTaskByUUID(signature.UUID)
+		//if has {
+		//	log.DEBUG.Printf("update task status to scheduled %v", task)
+		//	task.Status = conf.TASK_SCHEDULED
+		//	entity.UpdateTask(task)
+		//}
+	}
+	server.SetDelPostCycleHandler(delCycleHandler)
+	select {}
+	return nil
+}
 func worker() error {
 	consumerTag := "machinery_worker"
 
@@ -121,7 +170,7 @@ func worker() error {
 	}
 	defer cleanup()
 
-	server, err := startServer(true)
+	server, err := startServer(false)
 	if err != nil {
 		return err
 	}
@@ -364,7 +413,7 @@ func send() error {
 	/*
 	 * Now let's explore ways of sending multiple tasks
 	 */
-	//Now let's try a parallel execution
+	//let's try a parallel execution
 	//initTasks()
 	//log.INFO.Println("Group of tasks (parallel execution):")
 	//
@@ -391,7 +440,7 @@ func send() error {
 	//	)
 	//}
 
-	//Now let's try a group with a chord
+	//let's try a group with a chord
 	//initTasks()
 	//log.INFO.Println("Group of tasks with a callback (chord):")
 	//

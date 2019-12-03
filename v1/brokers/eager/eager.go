@@ -88,10 +88,10 @@ func (b *Broker) DeleteCycleTask(uuid string) (error) {
 }
 
 // add cycle signature
-func (b *Broker) SendHeartbeat(ctx context.Context, heartbeat *monitor.Heartbeat) error {
+func (b *Broker) SendHeartbeat(heartbeat *monitor.Heartbeat, queue string) error {
 	return nil
 }
 
-func (b *Broker) ConsumeHeartbeat() (*monitor.Heartbeat, error) {
+func (b *Broker) ConsumeHeartbeat(queue string) (*monitor.Heartbeat, error) {
 	return nil, nil
 }

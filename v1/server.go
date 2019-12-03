@@ -144,7 +144,8 @@ func (server *Server) SetConfig(cnf *config.Config) {
 func (server *Server) SetPreTaskHandler(handler func(*tasks.Signature)) {
 	server.prePublishHandler = handler
 }
-func (server *Server) SetPostCycleHandler(handler func(*tasks.Signature)) {
+
+func (server *Server) SetDelPostCycleHandler(handler func(*tasks.Signature)) {
 	server.postDelCycleHandler = handler
 }
 

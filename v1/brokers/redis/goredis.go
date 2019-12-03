@@ -225,14 +225,13 @@ func (b *BrokerGR) DeleteCycleTask(uuid string) ( error) {
 }
 
 // add cycle signature
-func (b *BrokerGR) SendHeartbeat(ctx context.Context, heartbeat *monitor.Heartbeat) error {
+func (b *BrokerGR) SendHeartbeat(heartbeat *monitor.Heartbeat, queue string) error {
 	return nil
 }
 
-func (b *BrokerGR) ConsumeHeartbeat() (*monitor.Heartbeat, error) {
+func (b *BrokerGR) ConsumeHeartbeat(queue string) (*monitor.Heartbeat, error) {
 	return nil, nil
 }
-
 
 // consume takes delivered messages from the channel and manages a worker pool
 // to process tasks concurrently
