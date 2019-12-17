@@ -4,8 +4,8 @@ import (
 	"crypto/tls"
 	"time"
 
-	"github.com/piaobeizu/machinery/v1/config"
 	"github.com/gomodule/redigo/redis"
+	"github.com/piaobeizu/machinery/v1/config"
 )
 
 var (
@@ -14,7 +14,7 @@ var (
 		MaxActive:              100,
 		IdleTimeout:            300,
 		Wait:                   true,
-		ReadTimeout:            15,
+		ReadTimeout:            32,
 		WriteTimeout:           15,
 		ConnectTimeout:         15,
 		NormalTasksPollPeriod:  1000,
@@ -36,6 +36,9 @@ func (rc *RedisConnector) NewPool(socketPath, host, password string, db int, cnf
 		MaxActive:   cnf.MaxActive,
 		Wait:        cnf.Wait,
 		Dial: func() (redis.Conn, error) {
+			redis.DialConnectTimeout(time.Duration(cnf.ConnectTimeout) * time.Second)
+			redis.DialReadTimeout(time.Duration(cnf.ReadTimeout) * time.Second)
+			redis.DialWriteTimeout(time.Duration(cnf.WriteTimeout) * time.Second)
 			c, err := rc.open(socketPath, host, password, db, cnf, tlsConfig)
 			if err != nil {
 				return nil, err

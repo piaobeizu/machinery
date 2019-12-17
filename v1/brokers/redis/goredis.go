@@ -229,7 +229,7 @@ func (b *BrokerGR) SendHeartbeat(heartbeat *monitor.Heartbeat, queue string) err
 	return nil
 }
 
-func (b *BrokerGR) ConsumeHeartbeat(queue string) (*monitor.Heartbeat, error) {
+func (b *BrokerGR) ConsumeHeartbeat(ctx context.Context, queue string, consume iface.ConsumeFunc) (*monitor.Heartbeat, error) {
 	return nil, nil
 }
 

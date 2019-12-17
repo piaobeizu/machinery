@@ -161,21 +161,24 @@ func (b *Broker) SendHeartbeat(heartbeat *monitor.Heartbeat, queue string) error
 	}
 	conn := b.open()
 	defer conn.Close()
-	if (queue == b.GetConfig().MonitorWorkerQueue) {
+	if queue == b.GetConfig().MonitorWorkerQueue {
 		_, err = conn.Do("RPUSH", queue, msg)
 	} else {
-		_, err = conn.Do("SET", queue, msg)
+		_, err = redis.Int(conn.Do("PUBLISH", queue, msg))
+		if err != nil {
+			log.FATAL.Fatalf("redis publish %s %s, err: %v", queue, msg, err)
+		}
 	}
 	return err
 }
 
 // StartConsuming enters a loop and waits for incoming messages
-func (b *Broker) ConsumeHeartbeat(queue string) (*monitor.Heartbeat, error) {
+func (b *Broker) ConsumeHeartbeat(ctx context.Context, queue string, consume iface.ConsumeFunc) (*monitor.Heartbeat, error) {
 	pollPeriod := time.Duration(1000) * time.Millisecond
 	conn := b.open()
 	defer conn.Close()
-	if (queue == b.GetConfig().MonitorWorkerQueue) {
-		items, err := redis.ByteSlices(conn.Do("BLPOP", queue, pollPeriod.Seconds()));
+	if queue == b.GetConfig().MonitorWorkerQueue {
+		items, err := redis.ByteSlices(conn.Do("BLPOP", queue, pollPeriod.Seconds()))
 		if err != nil {
 			return nil, err
 		}
@@ -191,17 +194,52 @@ func (b *Broker) ConsumeHeartbeat(queue string) (*monitor.Heartbeat, error) {
 		}
 		return heartbeat, nil
 	} else {
-		item, err := redis.String(conn.Do("GET", queue));
-		if err != nil {
+		psc := redis.PubSubConn{Conn: conn}
+		if err := psc.Subscribe(redis.Args{}.AddFlat(queue)...); err != nil {
 			return nil, err
 		}
-		var heartbeat monitor.Heartbeat
-		err = json.Unmarshal([]byte(item), &heartbeat)
-		if err != nil {
-			log.ERROR.Print("decode heartbeat error %v", err)
-			return nil, err
+		done := make(chan error, 1)
+		// start a new goroutine to receive message
+		go func() {
+			defer psc.Close()
+			for {
+				switch msg := psc.Receive().(type) {
+				case error:
+					done <- fmt.Errorf("redis pubsub receive err: %v", msg)
+					return
+				case redis.Message:
+					if err := consume(msg); err != nil {
+						done <- err
+						return
+					}
+				case redis.Subscription:
+					if msg.Count == 0 {
+						// all channels are unsubscribed
+						done <- nil
+						return
+					}
+				}
+			}
+		}()
+
+		// health check
+		tick := time.NewTicker(time.Minute)
+		defer tick.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				if err := psc.Unsubscribe(); err != nil {
+					return nil, fmt.Errorf("redis pubsub unsubscribe err: %v", err)
+				}
+				return nil, nil
+			case err := <-done:
+				return nil, err
+			case <-tick.C:
+				if err := psc.Ping(""); err != nil {
+					return nil, err
+				}
+			}
 		}
-		return &heartbeat, nil
 	}
 }
 

@@ -2,11 +2,14 @@ package iface
 
 import (
 	"context"
+	"github.com/gomodule/redigo/redis"
 	"github.com/piaobeizu/machinery/v1/monitor"
 
 	"github.com/piaobeizu/machinery/v1/config"
 	"github.com/piaobeizu/machinery/v1/tasks"
 )
+
+type ConsumeFunc func(msg redis.Message) error
 
 // Broker - a common interface for all brokers
 type Broker interface {
@@ -16,7 +19,7 @@ type Broker interface {
 	StartConsuming(consumerTag string, concurrency int, p TaskProcessor) (bool, error)
 	StopConsuming()
 	SendHeartbeat(heartbeat *monitor.Heartbeat, queue string) error
-	ConsumeHeartbeat(queue string) (*monitor.Heartbeat, error)
+	ConsumeHeartbeat(ctx context.Context, queue string, consume ConsumeFunc) (*monitor.Heartbeat, error)
 
 	Publish(ctx context.Context, task *tasks.Signature) error
 	GetPendingTasks(queue string) ([]*tasks.Signature, error)
